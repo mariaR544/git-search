@@ -1,0 +1,7 @@
+node_modules/
+temp_repos/
+logs/
+.env
+dist/
+*.exe
+config/config.json
