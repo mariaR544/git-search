@@ -10,6 +10,14 @@ GIT-SEARCH es una plataforma de escritorio profesional construida con Electron y
 
 ## 🛠️ Instalación y Uso
 
+git clone https://github.com/JuanMarcano-unimar/git-search.git
+
+cd git-search
+
+npm install (Esto descargará todas las librerías que ocultamos con el .gitignore).
+
+npm start
+
 Asegúrate de tener instalado [Node.js](https://nodejs.org/) y [Git](https://git-scm.com/) en tu sistema.
 
 1. **Clona o descarga el proyecto** a tu máquina.
