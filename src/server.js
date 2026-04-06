@@ -12,7 +12,9 @@ const archiver = require('archiver');
 const Groq = require('groq-sdk');
 
 // Log de inicio ultra-temprano
-fs.writeFileSync(path.join(__dirname, '../logs/startup_check.txt'), `GIT-SEARCH iniciado a las ${new Date().toISOString()}\n`);
+const logsDir = path.join(__dirname, '../logs');
+if (!fs.existsSync(logsDir)) fs.mkdirSync(logsDir, { recursive: true });
+fs.writeFileSync(path.join(logsDir, 'startup_check.txt'), `GIT-SEARCH iniciado a las ${new Date().toISOString()}\n`);
 
 const os = require('os');
 const app = express();
@@ -33,6 +35,8 @@ function loadConfig() {
 }
 
 function saveConfig(config) {
+    const configDir = path.dirname(CONFIG_FILE);
+    if (!fs.existsSync(configDir)) fs.mkdirSync(configDir, { recursive: true });
     fs.writeFileSync(CONFIG_FILE, JSON.stringify(config, null, 2));
 }
 
@@ -101,8 +105,8 @@ process.on('unhandledRejection', (reason) => logDebug(`Rechazo no manejado: ${re
 function ejecutarComandoGit(comando, repoPath) {
     // RUTA FIJA Y PERMANENTE: Se ignora cualquier mala configuración si la fija existe
     const gitExec = fs.existsSync(FIXED_GIT_PATH) ? FIXED_GIT_PATH : (GIT_BIN || currentConfig.gitPath || 'git');
-    const cmdFinal = comando.startsWith('git ') 
-        ? `"${gitExec}" ${comando.substring(4)}` 
+    const cmdFinal = comando.startsWith('git ')
+        ? `"${gitExec}" ${comando.substring(4)}`
         : comando;
 
     return new Promise((resolve, reject) => {
@@ -129,7 +133,7 @@ const repoLocks = {};
 async function prepararRepositorio(inputPath) {
     let finalPath = inputPath.trim();
     logDebug(`>> PrepararRepositorio: "${finalPath}"`);
-    
+
     if (finalPath.includes('github.com') && !finalPath.startsWith('http') && !finalPath.startsWith('git@')) {
         finalPath = `https://${finalPath}`;
     }
@@ -186,15 +190,15 @@ app.get('/api/analytics', async (req, res) => {
     let repoPath = req.query.path || process.cwd();
     try {
         repoPath = await prepararRepositorio(repoPath);
-        
+
         const format = 'COMMIT_START::%H::%an::%ae::%ad::%as::%s';
         const logData = await ejecutarComandoGit(`git --no-pager log --pretty=format:"${format}" --numstat`, repoPath);
-        
+
         const commits = [];
         const churnMap = {};
         const coAuthMap = {};
         const heatmapData = {}; // keyed by YYYY-MM-DD
-        
+
         const blocks = logData.split('COMMIT_START::').filter(Boolean);
 
         blocks.forEach(block => {
@@ -230,7 +234,7 @@ app.get('/api/analytics', async (req, res) => {
                     const [added, deleted, name] = parts;
                     const additions = (added === '-' ? 0 : parseInt(added)) || 0;
                     const deletions = (deleted === '-' ? 0 : parseInt(deleted)) || 0;
-                    
+
                     commit.archivos.push({ adiciones: additions, eliminaciones: deletions, nombre: name });
                     touchedFiles.push(name);
 
@@ -270,14 +274,14 @@ app.get('/api/analytics', async (req, res) => {
         // AI Insight Generation (Local)
         const aiInsights = generateInsights({ commits, churnRanking, synergy });
 
-        res.json({ 
-            commits, 
-            metrics: { 
-                churnRanking, 
-                synergy, 
+        res.json({
+            commits,
+            metrics: {
+                churnRanking,
+                synergy,
                 heatmapData,
-                aiInsights 
-            } 
+                aiInsights
+            }
         });
     } catch (err) {
         res.status(500).json({ error: 'GIT-SEARCH: Error en análisis: ' + err.message });
@@ -286,7 +290,7 @@ app.get('/api/analytics', async (req, res) => {
 
 function generateInsights({ commits, churnRanking, synergy }) {
     const insights = [];
-    
+
     // Insight 1: High Churn
     if (churnRanking.length > 0) {
         const topFile = churnRanking[0];
@@ -301,7 +305,7 @@ function generateInsights({ commits, churnRanking, synergy }) {
     // Insight 2: Activity pattern
     const total = commits.length;
     if (total > 0) {
-        const topAuthor = [...new Set(commits.map(c => c.autor))].sort((a,b) => 
+        const topAuthor = [...new Set(commits.map(c => c.autor))].sort((a, b) =>
             commits.filter(c => c.autor === b).length - commits.filter(c => c.autor === a).length
         )[0];
         insights.push({
@@ -330,7 +334,7 @@ function generateInsights({ commits, churnRanking, synergy }) {
 app.get('/api/search', async (req, res) => {
     const { path: repoPath, query } = req.query;
     if (!query) return res.json({ commits: [] });
-    
+
     try {
         const finalPath = await prepararRepositorio(repoPath || process.cwd());
         const data = await ejecutarComandoGit(`git log --grep="${query}" --pretty=format:"%H::%an::%ad::%s"`, finalPath);
@@ -373,22 +377,22 @@ app.get('/api/download-zip', async (req, res) => {
     try {
         const queryPath = req.query.path;
         if (!queryPath) return res.status(400).send('Ruta de repositorio requerida');
-        
+
         // Clona si es remoto, o usa el local si ya existe
         const finalPath = await prepararRepositorio(queryPath);
-        
+
         const folderName = path.basename(finalPath);
         res.attachment(`${folderName}-source.zip`);
-        
+
         const archive = archiver('zip', { zlib: { level: 9 } });
         archive.on('error', err => { throw err; });
         archive.pipe(res);
-        
+
         archive.glob('**/*', {
             cwd: finalPath,
             ignore: ['**/.git/**']
         });
-        
+
         await archive.finalize();
     } catch (err) {
         if (!res.headersSent) res.status(500).send("Error generando ZIP: " + err.message);
@@ -400,10 +404,10 @@ app.post('/api/chat', express.json({ limit: '50mb' }), async (req, res) => {
         const { message, context } = req.body;
         const key = currentConfig.groqKey;
         if (!key) return res.status(401).json({ error: "Falta Groq API Key. Ve a Configuración y agrega tu clave gratuita de https://console.groq.com" });
-        
+
         const groq = new Groq({ apiKey: key });
         const modelName = currentConfig.groqModel || "llama3-8b-8192";
-        
+
         const systemPrompt = `Eres GIT-SEARCH AI, un asistente experto en ingeniería de software.
         El usuario está analizando un repositorio Git con las siguientes métricas:
         - Commits analizados: ${context.commitsTotal}
@@ -411,7 +415,7 @@ app.post('/api/chat', express.json({ limit: '50mb' }), async (req, res) => {
         - Pares con mayor colaboración: ${JSON.stringify(context.synergy)}
         - Total archivos: ${context.filesTotal}
         Responde en español, de forma clara y concisa (máx 3 párrafos). Sé técnico pero amigable.`;
-        
+
         const completion = await groq.chat.completions.create({
             messages: [
                 { role: 'system', content: systemPrompt },
@@ -420,7 +424,7 @@ app.post('/api/chat', express.json({ limit: '50mb' }), async (req, res) => {
             model: modelName,
             max_tokens: 600
         });
-        
+
         res.json({ response: completion.choices[0].message.content });
     } catch (err) {
         let errMsg = err.message;

@@ -2,7 +2,7 @@ const { app, BrowserWindow } = require('electron');
 const path = require('path');
 
 // Iniciar el backend y el servidor Express local
-// require('./src/server.js');
+require('./src/server.js');
 
 let mainWindow;
 

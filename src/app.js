@@ -294,9 +294,42 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function renderSidebar(files) {
-        el.fileList.innerHTML = files.slice(0, 100).map(f => `
-            <li class="file-item" title="${f}">📄 ${f}</li>
-        `).join('');
+        const tree = {};
+        files.slice(0, 150).forEach(f => {
+            const parts = f.split('/');
+            let current = tree;
+            for (let i = 0; i < parts.length; i++) {
+                const part = parts[i];
+                if (!current[part]) {
+                    current[part] = i === parts.length - 1 ? null : {};
+                }
+                current = current[part];
+            }
+        });
+
+        function generateHTML(node, depth = 0) {
+            let html = '';
+            // Ordenar carpetas primero, luego archivos
+            const entries = Object.entries(node).sort((a, b) => {
+                const aIsFolder = a[1] !== null;
+                const bIsFolder = b[1] !== null;
+                if (aIsFolder && !bIsFolder) return -1;
+                if (!aIsFolder && bIsFolder) return 1;
+                return a[0].localeCompare(b[0]);
+            });
+
+            for (const [name, content] of entries) {
+                if (content === null) {
+                    html += `<li class="file-item" style="padding-left: ${depth * 15 + 12}px" title="${name}">📄 ${name}</li>`;
+                } else {
+                    html += `<li class="file-item" style="padding-left: ${depth * 15 + 12}px; color: var(--text-main); font-weight: 600;" title="${name}">📁 ${name}</li>`;
+                    html += generateHTML(content, depth + 1);
+                }
+            }
+            return html;
+        }
+
+        el.fileList.innerHTML = generateHTML(tree);
     }
 
     function renderSearchResults(commits) {
