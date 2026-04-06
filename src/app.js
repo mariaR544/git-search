@@ -49,7 +49,12 @@ document.addEventListener('DOMContentLoaded', () => {
         geminiKeyInput: document.getElementById('geminiKeyInput'),
         geminiModelInput: document.getElementById('geminiModelInput'),
         lastActiveDate: document.getElementById('lastActiveDate'),
-        totalEdits: document.getElementById('totalEdits')
+        totalEdits: document.getElementById('totalEdits'),
+        // Commits Timeline Panel
+        commitsPanel: document.getElementById('commitsPanel'),
+        commitsAuthorName: document.getElementById('commitsAuthorName'),
+        commitsCountBadge: document.getElementById('commitsCountBadge'),
+        commitsTimeline: document.getElementById('commitsTimeline')
     };
 
     let currentData = null;
@@ -113,14 +118,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     el.btnDownloadZip.addEventListener('click', async () => {
         const repoPath = el.repoInput.value.trim();
-        if(!repoPath) return alert('Escanea un repositorio primero.');
-        
+        if (!repoPath) return alert('Escanea un repositorio primero.');
+
         showLoader(true, 'Generando archivo ZIP...');
         const iframe = document.createElement('iframe');
         iframe.style.display = 'none';
         iframe.src = `/api/download-zip?path=${encodeURIComponent(repoPath)}`;
         document.body.appendChild(iframe);
-        
+
         setTimeout(() => {
             iframe.remove();
             showLoader(false);
@@ -128,14 +133,14 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     el.btnLocalOpen.addEventListener('click', () => {
-        if(!originalRepoUrl) return;
+        if (!originalRepoUrl) return;
         window.location.href = `x-github-client://openRepo/${originalRepoUrl}`;
     });
 
     function updateCloneUrl(type) {
-        if(!originalRepoUrl) return;
+        if (!originalRepoUrl) return;
         let base = originalRepoUrl.replace('.git', '');
-        switch(type) {
+        switch (type) {
             case 'httpsTab': el.cloneUrlInput.value = base + '.git'; break;
             case 'sshTab': el.cloneUrlInput.value = base.replace('https://github.com/', 'git@github.com:') + '.git'; break;
             case 'cliTab': el.cloneUrlInput.value = 'gh repo clone ' + base.replace('https://github.com/', ''); break;
@@ -151,11 +156,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const repoPath = el.repoInput.value.trim();
         const res = await fetch(`/api/search?path=${encodeURIComponent(repoPath)}&query=${encodeURIComponent(query)}`);
         const { commits } = await res.json();
-        
+
         if (query.length > 2) {
             searchHistory.push({ query, time: new Date().toLocaleTimeString(), count: commits.length });
         }
-        
+
         renderSearchResults(commits);
     }, 300));
 
@@ -163,7 +168,7 @@ document.addEventListener('DOMContentLoaded', () => {
         el.testGitResult.classList.remove('hidden');
         el.testGitResult.textContent = 'Probando conexión...';
         el.testGitResult.className = 'test-result processing';
-        
+
         try {
             const res = await fetch('/api/test-git');
             const data = await res.json();
@@ -191,14 +196,14 @@ document.addEventListener('DOMContentLoaded', () => {
             ]);
 
             currentData = { ...analytics, files: tree.files };
-            
+
             // Llenar selector de autores
-            const authors = [...new Set(currentData.commits.map(c => c.autor))].sort((a,b) => a.localeCompare(b));
-            el.authorFilter.innerHTML = '<option value="all">Todos los colaboradores</option>' + 
+            const authors = [...new Set(currentData.commits.map(c => c.autor))].sort((a, b) => a.localeCompare(b));
+            el.authorFilter.innerHTML = '<option value="all">Todos los colaboradores</option>' +
                 authors.map(a => `<option value="${a}">${a}</option>`).join('');
-            
+
             renderDashboard(currentData);
-            
+
             originalRepoUrl = path;
             el.repoActions.style.display = 'flex';
             updateCloneUrl('httpsTab');
@@ -229,7 +234,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function applyAuthorFilter(e) {
         const selectedAuthor = e.target.value;
         if (!currentData) return;
-        
+
         // 1. Filtrar los commits
         let filteredCommits = currentData.commits;
         if (selectedAuthor !== 'all') {
@@ -269,6 +274,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         };
 
+        el.commitsAuthorName.textContent = selectedAuthor === 'all' ? 'Todos' : selectedAuthor;
+
         renderDashboard(customData);
     }
 
@@ -277,14 +284,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Statistics
         el.statCommits.textContent = commits.length;
-        el.statAuthors.textContent = new Set(commits.map(c => c.autor)).size;
+
+        // Contar colaboradores utilizando el email para agrupaciones más exactas en vez del nombre
+        const uniqueContributors = new Set(commits.map(c => {
+            if (c.email) return c.email.trim().toLowerCase();
+            return c.autor.trim().toLowerCase();
+        }));
+
+        el.statAuthors.textContent = uniqueContributors.size;
         el.statChurn.textContent = metrics.churnRanking.length > 0 ? metrics.churnRanking[0].count : 0;
-        
+
         // Heatmap Didactic Stats
         el.totalEdits.textContent = `Total ediciones: ${commits.length}`;
         const lastDate = commits[0] ? (commits[0].dateStr || (commits[0].fecha ? String(commits[0].fecha).split('T')[0] : '--')) : '--';
         el.lastActiveDate.textContent = `Última conexión: ${lastDate}`;
-        
+
         // Health Score (mock logic)
         const health = Math.max(0, 100 - (metrics.churnRanking.length * 2));
         el.statImpact.textContent = `${health}%`;
@@ -294,6 +308,50 @@ document.addEventListener('DOMContentLoaded', () => {
         renderSynergy(metrics.synergy);
         renderAI(metrics.aiInsights);
         renderSidebar(files);
+        renderCommitsTimeline(commits);
+    }
+
+    function renderCommitsTimeline(commits) {
+        if (!commits || commits.length === 0) {
+            el.commitsPanel.style.display = 'none';
+            return;
+        }
+
+        el.commitsPanel.style.display = 'block';
+        el.commitsCountBadge.textContent = `${commits.length} commits`;
+
+        // Renderizar todos los commits pero limitando la vista inicial o usando scroll (ya tiene scroll)
+        el.commitsTimeline.innerHTML = commits.map(c => {
+            let addCount = 0;
+            let delCount = 0;
+            if (c.archivos) {
+                c.archivos.forEach(f => {
+                    addCount += f.adiciones || 0;
+                    delCount += f.eliminaciones || 0;
+                });
+            }
+
+            const dateObj = c.fecha ? new Date(c.fecha) : null;
+            const dateFormatted = dateObj ? dateObj.toLocaleString('es-ES', { dateStyle: 'medium', timeStyle: 'short' }) : c.dateStr;
+
+            return `
+                <div class="commit-card">
+                    <div class="commit-card-header">
+                        <div class="commit-author">
+                            🧑‍💻 ${c.autor}
+                        </div>
+                        <div class="commit-date">${dateFormatted}</div>
+                    </div>
+                    <div class="commit-message">${c.mensaje}</div>
+                    <div class="commit-stats">
+                        <span class="commit-hash">${c.hash.substring(0, 7)}</span>
+                        <span class="commit-stat-files">📄 ${c.archivos ? c.archivos.length : 0} archivos</span>
+                        <span class="commit-stat-add">+${addCount}</span>
+                        <span class="commit-stat-del">-${delCount}</span>
+                    </div>
+                </div>
+            `;
+        }).join('');
     }
 
     function renderHeatmap(data) {
@@ -405,7 +463,7 @@ document.addEventListener('DOMContentLoaded', () => {
     async function handleUserMsg() {
         const text = el.aiMsgInput.value.trim();
         if (!text) return;
-        
+
         appendMsg('user', text);
         el.aiMsgInput.value = '';
 
@@ -437,14 +495,14 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!res.ok) {
                 const text = await res.text();
                 let errMsg = 'Error HTTP ' + res.status;
-                try { errMsg = JSON.parse(text).error || errMsg; } catch(e) {}
+                try { errMsg = JSON.parse(text).error || errMsg; } catch (e) { }
                 appendMsg('bot', '⚠️ ' + errMsg);
                 return;
             }
             const data = await res.json();
-            
+
             typingMsg.remove();
-            
+
             if (data.error) {
                 appendMsg('bot', '⚠️ ' + data.error);
             } else {
@@ -478,7 +536,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function debounce(func, wait) {
         let timeout;
-        return function(...args) {
+        return function (...args) {
             clearTimeout(timeout);
             timeout = setTimeout(() => func.apply(this, args), wait);
         };
@@ -487,16 +545,16 @@ document.addEventListener('DOMContentLoaded', () => {
     async function exportPDF() {
         if (!currentData) return alert('Escanea un repositorio primero');
         showLoader(true, 'Generando Auditoría con Capturas...');
-        
+
         try {
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF('p', 'mm', 'a4');
             const pageWidth = doc.internal.pageSize.getWidth();
-            
+
             // 1. Título y Metadatos
             doc.setFontSize(22);
             doc.text("GIT-SEARCH: Auditoría Técnica", 15, 20);
-            
+
             doc.setFontSize(14);
             doc.text(`Repositorio: ${el.currentRepoName.textContent}`, 15, 30);
             doc.text(`Fecha: ${new Date().toLocaleDateString()}`, 15, 38);
@@ -505,19 +563,19 @@ document.addEventListener('DOMContentLoaded', () => {
             const mainContent = document.querySelector('.content-area');
             const canvas = await html2canvas(mainContent, { scale: 1.5, backgroundColor: '#0a0c10' });
             const imgData = canvas.toDataURL('image/png');
-            
+
             // Calcular proproción para ajustar el ancho al PDF
             const imgProps = doc.getImageProperties(imgData);
             const pdfWidth = pageWidth - 30; // 15mm margenes
             const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
-            
+
             doc.text("Captura del Dashboard (Screenshot):", 15, 50);
             doc.addImage(imgData, 'PNG', 15, 55, pdfWidth, pdfHeight);
 
             // 3. Añadir nueva página para datos detallados
             doc.addPage();
             doc.text("Historial de Búsquedas Recientes", 15, 20);
-            
+
             if (searchHistory.length > 0) {
                 doc.autoTable({
                     startY: 25,
@@ -531,10 +589,10 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             let finalY = doc.lastAutoTable ? doc.lastAutoTable.finalY + 20 : 40;
-            
+
             doc.setFontSize(14);
             doc.text("Hotspots de Código (Archivos más inestables)", 15, finalY);
-            
+
             doc.autoTable({
                 startY: finalY + 5,
                 head: [['Archivo', 'Impacto (Ediciones)']],

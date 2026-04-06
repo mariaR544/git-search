@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,12 +8,15 @@
     <link rel="stylesheet" href="style.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Outfit:wght@400;700&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Outfit:wght@400;700&display=swap"
+        rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
+
 <body class="pro-theme">
     <div class="app-layout">
         <!-- Sidebar Premium -->
@@ -21,13 +25,16 @@
                 <div class="logo-icon">🔍</div>
                 <h1>GIT-<span>SEARCH</span></h1>
             </div>
-            
+
             <div class="search-box">
                 <label for="repoInput">Repositorio (Ruta o URL)</label>
                 <div class="input-group">
                     <input type="text" id="repoInput" placeholder="https://github.com/..." autocomplete="off">
                     <button id="btnScan" title="Analizar Repo">
-                        <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                        <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                        </svg>
                     </button>
                 </div>
             </div>
@@ -41,7 +48,11 @@
 
             <div class="sidebar-footer">
                 <button id="btnSettings" class="btn-outline">
-                    <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path></svg>
+                    <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z">
+                        </path>
+                    </svg>
                     Configurar
                 </button>
                 <button id="btnExport" class="btn-gradient">Generar Reporte PDF</button>
@@ -55,7 +66,7 @@
                     <h2 id="currentRepoName">Dashboard Inteligente</h2>
                     <span class="badge" id="branchBadge">Esperando...</span>
                 </div>
-                
+
                 <!-- Buscador de Commits Directo -->
                 <div class="global-commit-search">
                     <input type="text" id="commitSearchInput" placeholder="Buscar cambios, autores, lógica...">
@@ -70,12 +81,17 @@
             <!-- Acciones V2: Clone Dropdown -->
             <div class="repo-actions-bar" id="repoActions" style="display: none;">
                 <!-- Filtro por autor -->
-                <select id="authorFilter" class="btn-outline" style="margin-right: auto; max-width: 300px; padding: 8px 12px; outline: none; appearance: auto;">
+                <select id="authorFilter" class="btn-outline"
+                    style="margin-right: auto; max-width: 300px; padding: 8px 12px; outline: none; appearance: auto;">
                     <option value="all">Todos los colaboradores</option>
                 </select>
 
                 <button id="btnToggleClone" class="btn-success">
-                    <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M10.75 3a.75.75 0 000 1.5h1.69L8.22 8.72a.75.75 0 001.06 1.06l4.22-4.22v1.69a.75.75 0 001.5 0V3h-4.25zM2.75 4a.75.75 0 00-.75.75v6.5c0 .414.336.75.75.75h6.5a.75.75 0 00.75-.75v-1.5a.75.75 0 011.5 0v1.5A2.25 2.25 0 019.25 13.5h-6.5A2.25 2.25 0 01.5 11.25v-6.5A2.25 2.25 0 012.75 2.5h1.5a.75.75 0 010 1.5h-1.5z"></path></svg>
+                    <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                        <path fill-rule="evenodd"
+                            d="M10.75 3a.75.75 0 000 1.5h1.69L8.22 8.72a.75.75 0 001.06 1.06l4.22-4.22v1.69a.75.75 0 001.5 0V3h-4.25zM2.75 4a.75.75 0 00-.75.75v6.5c0 .414.336.75.75.75h6.5a.75.75 0 00.75-.75v-1.5a.75.75 0 011.5 0v1.5A2.25 2.25 0 019.25 13.5h-6.5A2.25 2.25 0 01.5 11.25v-6.5A2.25 2.25 0 012.75 2.5h1.5a.75.75 0 010 1.5h-1.5z">
+                        </path>
+                    </svg>
                     Clone
                 </button>
 
@@ -92,16 +108,31 @@
                         <div class="clone-copy-group">
                             <input type="text" id="cloneUrlInput" value="https://github.com/..." readonly>
                             <button class="clone-copy-btn" id="btnCopyClone" title="Copy to clipboard">
-                                <svg width="14" height="14" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 010 1.5h-1.5a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-1.5a.75.75 0 011.5 0v1.5A1.75 1.75 0 019.25 16h-7.5A1.75 1.75 0 010 14.25v-7.5z"></path><path fill-rule="evenodd" d="M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0114.25 11h-7.5A1.75 1.75 0 015 9.25v-7.5zm1.75-.25a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-7.5a.25.25 0 00-.25-.25h-7.5z"></path></svg>
+                                <svg width="14" height="14" fill="currentColor" viewBox="0 0 16 16">
+                                    <path fill-rule="evenodd"
+                                        d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 010 1.5h-1.5a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-1.5a.75.75 0 011.5 0v1.5A1.75 1.75 0 019.25 16h-7.5A1.75 1.75 0 010 14.25v-7.5z">
+                                    </path>
+                                    <path fill-rule="evenodd"
+                                        d="M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0114.25 11h-7.5A1.75 1.75 0 015 9.25v-7.5zm1.75-.25a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-7.5a.25.25 0 00-.25-.25h-7.5z">
+                                    </path>
+                                </svg>
                             </button>
                         </div>
                         <div class="clone-actions">
                             <button class="clone-action-btn" id="btnLocalOpen">
-                                <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M1.75 2.5h12.5a.25.25 0 01.25.25v7.5a.25.25 0 01-.25.25H1.75a.25.25 0 01-.25-.25v-7.5a.25.25 0 01.25-.25zM0 2.75C0 1.784.784 1 1.75 1h12.5C15.216 1 16 1.784 16 2.75v7.5A1.75 1.75 0 0114.25 12H1.75A1.75 1.75 0 010 10.25v-7.5zM9 15.5h6.5a.75.75 0 010 1.5H9a.75.75 0 010-1.5zm-8.5 0h4a.75.75 0 010 1.5h-4a.75.75 0 010-1.5z"></path></svg>
+                                <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                                    <path fill-rule="evenodd"
+                                        d="M1.75 2.5h12.5a.25.25 0 01.25.25v7.5a.25.25 0 01-.25.25H1.75a.25.25 0 01-.25-.25v-7.5a.25.25 0 01.25-.25zM0 2.75C0 1.784.784 1 1.75 1h12.5C15.216 1 16 1.784 16 2.75v7.5A1.75 1.75 0 0114.25 12H1.75A1.75 1.75 0 010 10.25v-7.5zM9 15.5h6.5a.75.75 0 010 1.5H9a.75.75 0 010-1.5zm-8.5 0h4a.75.75 0 010 1.5h-4a.75.75 0 010-1.5z">
+                                    </path>
+                                </svg>
                                 Open with GitHub Desktop
                             </button>
                             <button class="clone-action-btn" id="btnDownloadZip">
-                                <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M2.75 14A1.75 1.75 0 011 12.25v-2.5a.75.75 0 011.5 0v2.5c0 .138.112.25.25.25h10.5a.25.25 0 00.25-.25v-2.5a.75.75 0 011.5 0v2.5A1.75 1.75 0 0113.25 14H2.75zM8 1.75a.75.75 0 01.75.75v6.19l1.72-1.72a.75.75 0 111.06 1.06l-3 3a.75.75 0 01-1.06 0l-3-3a.75.75 0 011.06-1.06l1.72 1.72V2.5A.75.75 0 018 1.75z"></path></svg>
+                                <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                                    <path fill-rule="evenodd"
+                                        d="M2.75 14A1.75 1.75 0 011 12.25v-2.5a.75.75 0 011.5 0v2.5c0 .138.112.25.25.25h10.5a.25.25 0 00.25-.25v-2.5a.75.75 0 011.5 0v2.5A1.75 1.75 0 0113.25 14H2.75zM8 1.75a.75.75 0 01.75.75v6.19l1.72-1.72a.75.75 0 111.06 1.06l-3 3a.75.75 0 01-1.06 0l-3-3a.75.75 0 011.06-1.06l1.72 1.72V2.5A.75.75 0 018 1.75z">
+                                    </path>
+                                </svg>
                                 Download ZIP
                             </button>
                         </div>
@@ -184,6 +215,22 @@
                 </div>
             </div>
 
+            <!-- Panel de Historial de Aportes -->
+            <section class="commits-panel glass-morph" id="commitsPanel" style="margin-top: 32px; display: none;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h3>Historial de Aportes: <span id="commitsAuthorName" style="color: var(--primary);">Todos</span>
+                    </h3>
+                    <span id="commitsCountBadge"
+                        style="background: rgba(99, 102, 241, 0.1); border: 1px solid var(--primary); padding: 4px 12px; border-radius: 12px; font-size: 13px; color: var(--text-main);">0
+                        commits</span>
+                </div>
+                <div id="commitsTimeline" class="commits-list-scroll"
+                    style="max-height: 400px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; padding-right: 10px;">
+                    <!-- Commits renderizados por JS -->
+                    <p class="empty-state">No hay aportes para mostrar</p>
+                </div>
+            </section>
+
             <!-- AI Insights Panel -->
             <section class="ai-insights-panel glass-morph" id="aiPanel">
                 <div class="ai-header">
@@ -202,7 +249,11 @@
 
     <!-- AI Floating Chat (GitHub Style) -->
     <div class="ai-chat-bubble" id="aiChatTrigger">
-        <svg width="24" height="24" fill="white" viewBox="0 0 24 24"><path d="M12 2C6.47 2 2 6.47 2 12c0 1.88.52 3.65 1.43 5.16L2.05 22l4.98-1.35c1.47.86 3.17 1.35 4.97 1.35 5.53 0 10-4.47 10-10S17.53 2 12 2z"></path></svg>
+        <svg width="24" height="24" fill="white" viewBox="0 0 24 24">
+            <path
+                d="M12 2C6.47 2 2 6.47 2 12c0 1.88.52 3.65 1.43 5.16L2.05 22l4.98-1.35c1.47.86 3.17 1.35 4.97 1.35 5.53 0 10-4.47 10-10S17.53 2 12 2z">
+            </path>
+        </svg>
     </div>
 
     <div id="aiChatWindow" class="ai-chat-window hidden">
@@ -251,4 +302,5 @@
 
     <script src="app.js"></script>
 </body>
+
 </html>

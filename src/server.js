@@ -162,14 +162,19 @@ async function prepararRepositorio(inputPath) {
     const performPreparation = async () => {
         if (fs.existsSync(localPath)) {
             try {
-                await ejecutarComandoGit('git fetch --all', localPath);
+                // If the repo was previously cloned shallow, unshallow it. Otherwise just fetch all.
+                try {
+                    await ejecutarComandoGit('git fetch --unshallow', localPath);
+                } catch (err) {
+                    await ejecutarComandoGit('git fetch --all', localPath);
+                }
                 await ejecutarComandoGit('git reset --hard FETCH_HEAD --quiet', localPath);
             } catch (e) {
                 fs.rmSync(localPath, { recursive: true, force: true });
-                await ejecutarComandoGit(`git clone --depth 1 ${finalPath} ${repoName}`, TEMP_DIR);
+                await ejecutarComandoGit(`git clone ${finalPath} ${repoName}`, TEMP_DIR);
             }
         } else {
-            await ejecutarComandoGit(`git clone --depth 1 ${finalPath} ${repoName}`, TEMP_DIR);
+            await ejecutarComandoGit(`git clone ${finalPath} ${repoName}`, TEMP_DIR);
         }
     };
 
@@ -191,8 +196,8 @@ app.get('/api/analytics', async (req, res) => {
     try {
         repoPath = await prepararRepositorio(repoPath);
 
-        const format = 'COMMIT_START::%H::%an::%ae::%ad::%as::%s';
-        const logData = await ejecutarComandoGit(`git --no-pager log --pretty=format:"${format}" --numstat`, repoPath);
+        const format = 'COMMIT_START::%H::%aN::%aE::%ad::%as::%s';
+        const logData = await ejecutarComandoGit(`git --no-pager log --no-merges --pretty=format:"${format}" --numstat`, repoPath);
 
         const commits = [];
         const churnMap = {};
@@ -209,12 +214,28 @@ app.get('/api/analytics', async (req, res) => {
             const metaParts = meta.split('::');
             if (metaParts.length < 6) return;
 
-            const [hash, author, email, dateRaw, dateISO, subject] = metaParts;
+            const [hash, authorRaw, emailRaw, dateRaw, dateISO, subject] = metaParts;
+            const author = authorRaw || 'Desconocido';
+            const email = emailRaw || '';
+            const emailLower = email.toLowerCase();
+            const authorLower = author.toLowerCase();
+
+            // Filtrar Bots comunes contados por GitHub como no-humanos
+            if (
+                authorLower.includes('[bot]') ||
+                authorLower.endsWith('-bot') ||
+                authorLower.endsWith(' bot') ||
+                authorLower === 'bot' ||
+                authorLower === 'github actions' ||
+                emailLower.includes('dependabot') ||
+                emailLower.includes('renovate') ||
+                emailLower.includes('bot@')
+            ) {
+                return;
+            }
+
             const commitDate = new Date(dateRaw);
             const dateStr = dateISO; // YYYY-MM-DD
-
-            // Update Heatmap
-            heatmapData[dateStr] = (heatmapData[dateStr] || 0) + 1;
 
             const commit = {
                 hash,
@@ -242,6 +263,12 @@ app.get('/api/analytics', async (req, res) => {
                     churnMap[name] = (churnMap[name] || 0) + 1;
                 }
             });
+
+            // Si el commit no modificó archivos reales (después de descartar merges, a veces ocurre), ignorar
+            if (touchedFiles.length === 0) return;
+
+            // Update Heatmap
+            heatmapData[dateStr] = (heatmapData[dateStr] || 0) + 1;
 
             // Co-author detection (Simplified: authors working on same files in same commit range)
             // For a single commit we just track author-file affinity
