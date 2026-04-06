@@ -8,7 +8,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const el = {
         btnScan: document.getElementById('btnScan'),
         btnExport: document.getElementById('btnExport'),
-        btnSettings: document.getElementById('btnSettings'),
+        btnClear: document.getElementById('btnClear'),
         btnSaveConfig: document.getElementById('btnSaveConfig'),
         configModal: document.getElementById('configModal'),
         gitPathInput: document.getElementById('gitPathInput'),
@@ -57,6 +57,32 @@ document.addEventListener('DOMContentLoaded', () => {
         commitsTimeline: document.getElementById('commitsTimeline')
     };
 
+    let typingMsg = null;
+    let langChartInstance = null;
+    
+    // Mapeo detallado de lenguajes basado en GitHub Colors
+    const extMap = {
+        'js': { name: 'JavaScript', color: '#f1e05a' },
+        'ts': { name: 'TypeScript', color: '#3178c6' },
+        'html': { name: 'HTML', color: '#e34c26' },
+        'css': { name: 'CSS', color: '#563d7c' },
+        'py': { name: 'Python', color: '#3572A5' },
+        'java': { name: 'Java', color: '#b07219' },
+        'c': { name: 'C', color: '#555555' },
+        'cpp': { name: 'C++', color: '#f34b7d' },
+        'cs': { name: 'C#', color: '#178600' },
+        'php': { name: 'PHP', color: '#4F5D95' },
+        'rb': { name: 'Ruby', color: '#701516' },
+        'go': { name: 'Go', color: '#00ADD8' },
+        'rs': { name: 'Rust', color: '#dea584' },
+        'md': { name: 'Markdown', color: '#083fa1' },
+        'json': { name: 'JSON', color: '#292929' },
+        'vue': { name: 'Vue', color: '#41b883' },
+        'sh': { name: 'Shell', color: '#89e051' },
+        'cjs': { name: 'JavaScript', color: '#f1e05a' },
+        'mjs': { name: 'JavaScript', color: '#f1e05a' }
+    };
+
     let currentData = null;
     let originalRepoUrl = '';
     let searchHistory = [];
@@ -75,7 +101,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Event Listeners
     el.btnScan.addEventListener('click', analyzeRepo);
-    el.btnSettings.addEventListener('click', () => el.configModal.classList.remove('hidden'));
+    el.btnClear.addEventListener('click', resetDashboard);
     el.btnSaveConfig.addEventListener('click', saveConfig);
     el.btnExport.addEventListener('click', exportPDF);
     el.aiChatTrigger.addEventListener('click', () => el.aiChatWindow.classList.toggle('hidden'));
@@ -231,6 +257,38 @@ document.addEventListener('DOMContentLoaded', () => {
         el.configModal.classList.add('hidden');
     }
 
+    function resetDashboard() {
+        currentData = null;
+        originalRepoUrl = '';
+        el.repoInput.value = '';
+        el.currentRepoName.textContent = 'Dashboard Inteligente';
+        el.lastSync.textContent = 'Sincronización: --:--';
+        el.branchBadge.textContent = 'Esperando...';
+
+        el.statCommits.textContent = '0';
+        el.statAuthors.textContent = '0';
+        el.statChurn.textContent = '0';
+        el.statImpact.textContent = '--';
+        el.totalEdits.textContent = 'Total ediciones: 0';
+        el.lastActiveDate.textContent = 'Última conexión: --';
+
+        el.repoActions.style.display = 'none';
+        el.authorFilter.innerHTML = '<option value="all">Todos los colaboradores</option>';
+
+        el.heatmap.innerHTML = '';
+        el.churnRanking.innerHTML = '<p class="empty-state">No hay datos disponibles</p>';
+        el.colabNetwork.innerHTML = '<p class="empty-state">Esperando análisis...</p>';
+        el.aiInsightsList.innerHTML = '';
+        el.fileList.innerHTML = '<li class="empty-state">Ingresa una ruta para comenzar</li>';
+
+        if (el.commitsPanel) el.commitsPanel.style.display = 'none';
+        if (el.commitsTimeline) el.commitsTimeline.innerHTML = '<p class="empty-state">No hay aportes para mostrar</p>';
+        if (langChartInstance) {
+            langChartInstance.destroy();
+            langChartInstance = null;
+        }
+    }
+
     function applyAuthorFilter(e) {
         const selectedAuthor = e.target.value;
         if (!currentData) return;
@@ -307,7 +365,8 @@ document.addEventListener('DOMContentLoaded', () => {
         renderChurn(metrics.churnRanking);
         renderSynergy(metrics.synergy);
         renderAI(metrics.aiInsights);
-        renderSidebar(files);
+        renderSidebar(files, metrics.churnRanking);
+        renderLanguageChart(files);
         renderCommitsTimeline(commits);
     }
 
@@ -407,9 +466,15 @@ document.addEventListener('DOMContentLoaded', () => {
         `).join('');
     }
 
-    function renderSidebar(files) {
+    function renderSidebar(files, churnRanking = []) {
+        const hotspotSet = new Set(churnRanking.map(item => item.name));
+        const topFilesToShow = new Set(files.slice(0, 200));
+        
+        // Garantizar que los archivos más modificados siempre se muestren
+        hotspotSet.forEach(f => topFilesToShow.add(f));
+
         const tree = {};
-        files.slice(0, 150).forEach(f => {
+        [...topFilesToShow].forEach(f => {
             const parts = f.split('/');
             let current = tree;
             for (let i = 0; i < parts.length; i++) {
@@ -421,7 +486,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        function generateHTML(node, depth = 0) {
+        function generateHTML(node, depth = 0, currentPath = '') {
             let html = '';
             // Ordenar carpetas primero, luego archivos
             const entries = Object.entries(node).sort((a, b) => {
@@ -433,17 +498,96 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             for (const [name, content] of entries) {
+                const itemPath = currentPath ? `${currentPath}/${name}` : name;
                 if (content === null) {
-                    html += `<li class="file-item" style="padding-left: ${depth * 15 + 12}px" title="${name}">📄 ${name}</li>`;
+                    const isHotspot = hotspotSet.has(itemPath);
+                    const styleStr = isHotspot 
+                        ? `padding-left: ${depth * 15 + 12}px; color: var(--danger); font-weight: bold; background: rgba(248, 81, 73, 0.1); border-left: 3px solid var(--danger); margin-bottom: 2px;` 
+                        : `padding-left: ${depth * 15 + 12}px`;
+                    const icon = isHotspot ? '🔥' : '📄';
+                    html += `<li class="file-item" style="${styleStr}" title="${itemPath}">${icon} ${name}</li>`;
                 } else {
-                    html += `<li class="file-item" style="padding-left: ${depth * 15 + 12}px; color: var(--text-main); font-weight: 600;" title="${name}">📁 ${name}</li>`;
-                    html += generateHTML(content, depth + 1);
+                    html += `<li class="file-item" style="padding-left: ${depth * 15 + 12}px; color: var(--text-main); font-weight: 600;" title="${itemPath}">📁 ${name}</li>`;
+                    html += generateHTML(content, depth + 1, itemPath);
                 }
             }
             return html;
         }
 
         el.fileList.innerHTML = generateHTML(tree);
+    }
+
+    function renderLanguageChart(files) {
+        if (!files || files.length === 0) return;
+        const counts = {};
+        files.forEach(f => {
+            if (f.includes('.')) {
+                const ext = f.split('.').pop().toLowerCase();
+                if (extMap[ext]) {
+                    const lang = extMap[ext];
+                    counts[lang.name] = counts[lang.name] || { count: 0, color: lang.color };
+                    counts[lang.name].count++;
+                } else if (!['png', 'jpg', 'jpeg', 'gif', 'svg', 'ico', 'mp4'].includes(ext)) {
+                    // Count unknown code files as "Otros"
+                    counts['Otros'] = counts['Otros'] || { count: 0, color: '#8b949e' };
+                    counts['Otros'].count++;
+                }
+            }
+        });
+
+        // Convert to array and sort
+        const sorted = Object.entries(counts).sort((a, b) => b[1].count - a[1].count).slice(0, 6);
+        const labels = sorted.map(item => item[0]);
+        const data = sorted.map(item => item[1].count);
+        const bgColors = sorted.map(item => item[1].color);
+
+        if (langChartInstance) {
+            langChartInstance.destroy();
+        }
+
+        const canvas = document.getElementById('languageChart');
+        if(!canvas) return;
+        const ctx = canvas.getContext('2d');
+        
+        langChartInstance = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: labels,
+                datasets: [{
+                    data: data,
+                    backgroundColor: bgColors,
+                    borderWidth: 2,
+                    borderColor: '#161b22', // Match dark background
+                    hoverOffset: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '70%', // Hacer el anillo más delgado y moderno
+                plugins: {
+                    legend: {
+                        position: 'right',
+                        labels: { 
+                            color: '#e6edf3', 
+                            font: { family: 'Inter', size: 12 },
+                            usePointStyle: true,
+                            boxWidth: 8
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const total = context.chart._metasets[context.datasetIndex].total;
+                                const value = context.raw;
+                                const percentage = Math.round((value / total) * 100) + '%';
+                                return ` ${context.label}: ${value} archivos (${percentage})`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
     }
 
     function renderSearchResults(commits) {
