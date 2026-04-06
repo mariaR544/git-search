@@ -37,6 +37,7 @@ document.addEventListener('DOMContentLoaded', () => {
         sendAiMsg: document.getElementById('sendAiMsg'),
         // Acciones V2
         repoActions: document.getElementById('repoActions'),
+        authorFilter: document.getElementById('authorFilter'),
         btnToggleClone: document.getElementById('btnToggleClone'),
         cloneDropdown: document.getElementById('cloneDropdown'),
         cloneTabs: document.querySelectorAll('.clone-tab'),
@@ -79,6 +80,9 @@ document.addEventListener('DOMContentLoaded', () => {
     el.btnTestGit = document.getElementById('btnTestGit');
     el.testGitResult = document.getElementById('testGitResult');
     el.btnTestGit.addEventListener('click', testGitConnection);
+
+    // Lógica filtro por autor
+    el.authorFilter.addEventListener('change', applyAuthorFilter);
 
     // Lógica Clone Dropdown
     el.btnToggleClone.addEventListener('click', (e) => {
@@ -187,6 +191,12 @@ document.addEventListener('DOMContentLoaded', () => {
             ]);
 
             currentData = { ...analytics, files: tree.files };
+            
+            // Llenar selector de autores
+            const authors = [...new Set(currentData.commits.map(c => c.autor))].sort((a,b) => a.localeCompare(b));
+            el.authorFilter.innerHTML = '<option value="all">Todos los colaboradores</option>' + 
+                authors.map(a => `<option value="${a}">${a}</option>`).join('');
+            
             renderDashboard(currentData);
             
             originalRepoUrl = path;
@@ -214,6 +224,52 @@ document.addEventListener('DOMContentLoaded', () => {
             body: JSON.stringify({ gitPath, groqKey, groqModel })
         });
         el.configModal.classList.add('hidden');
+    }
+
+    function applyAuthorFilter(e) {
+        const selectedAuthor = e.target.value;
+        if (!currentData) return;
+        
+        // 1. Filtrar los commits
+        let filteredCommits = currentData.commits;
+        if (selectedAuthor !== 'all') {
+            filteredCommits = currentData.commits.filter(c => c.autor === selectedAuthor);
+        }
+
+        // 2. Recalcular las métricas (Heatmap y Churn) localmente
+        const heatmapData = {};
+        const churnMap = {};
+
+        filteredCommits.forEach(commit => {
+            const dateStr = commit.dateStr || (commit.fecha ? String(commit.fecha).split('T')[0] : null);
+            if (dateStr) {
+                heatmapData[dateStr] = (heatmapData[dateStr] || 0) + 1;
+            }
+
+            if (commit.archivos) {
+                commit.archivos.forEach(file => {
+                    churnMap[file.nombre] = (churnMap[file.nombre] || 0) + 1;
+                });
+            }
+        });
+
+        const churnRanking = Object.entries(churnMap)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 10)
+            .map(([name, count]) => ({ name, count }));
+
+        // 3. Crear un payload filtrado que pasa a la UI
+        const customData = {
+            ...currentData,
+            commits: filteredCommits,
+            metrics: {
+                ...currentData.metrics,
+                heatmapData: heatmapData,
+                churnRanking: churnRanking
+            }
+        };
+
+        renderDashboard(customData);
     }
 
     function renderDashboard(data) {
